@@ -23,3 +23,20 @@ export interface AnalysisResult {
   /** Non-fatal validation notes (e.g. why untrusted/broken). */
   notes: string[];
 }
+
+/**
+ * Metadata about the bundled C2PA trust list (docs/PROJECT.md §10).
+ * Surfaced so the UI can show the list's age and flag staleness rather
+ * than presenting trust validation as silently absolute and current.
+ * Mirrors the Rust `TrustListInfo` struct in src-tauri/src/lib.rs.
+ */
+export interface TrustListInfo {
+  /** ISO date (YYYY-MM-DD) the bundled trust list was captured. */
+  bundled_date: string;
+  /** Where the bundled list came from, for auditability. */
+  source_url: string;
+  /** Number of certificates (trust anchors) in the bundled list. */
+  cert_count: number;
+  /** True once the list has crossed the staleness threshold. */
+  is_stale: boolean;
+}

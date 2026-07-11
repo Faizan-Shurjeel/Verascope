@@ -298,6 +298,38 @@ body {
   color: var(--muted);
 }
 
+/* ---- Trust-list status (docs/PROJECT.md §10) ---- */
+.trustlist {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  justify-content: center;
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.trustlist__dot {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--verified);
+}
+
+.trustlist--stale {
+  color: var(--untrusted);
+}
+
+.trustlist--stale .trustlist__dot {
+  background: var(--untrusted);
+}
+
+.trustlist__text {
+  max-width: 52ch;
+}
+
 /* ---- Dark mode ---- */
 @media (prefers-color-scheme: dark) {
   :root {

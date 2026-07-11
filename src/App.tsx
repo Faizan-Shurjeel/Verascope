@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import type { AnalysisResult, Verdict } from "./types";
+import type { AnalysisResult, TrustListInfo, Verdict } from "./types";
 import "./App.css";
 
 // Kept in sync with mime_for_path() in src-tauri/src/lib.rs.
@@ -54,6 +54,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
+  const [trustList, setTrustList] = useState<TrustListInfo | null>(null);
 
   const analyze = useCallback(async (path: string) => {
     setLoading(true);
@@ -102,6 +103,16 @@ function App() {
       void unlisten.then((fn) => fn());
     };
   }, [analyze]);
+
+  // Load bundled trust-list metadata once on mount so we can show its date
+  // and flag staleness (docs/PROJECT.md §10 — trust validation must never
+  // be presented as silently absolute and current). A failure here is
+  // non-fatal: the app still analyzes files, it just won't show the badge.
+  useEffect(() => {
+    invoke<TrustListInfo>("get_trust_list_info")
+      .then(setTrustList)
+      .catch(() => setTrustList(null));
+  }, []);
 
   const verdictMeta = result ? VERDICT_META[result.verdict] : null;
 
@@ -225,6 +236,22 @@ function App() {
         Everything runs locally. No file ever leaves your device. Absence of
         provenance data is not evidence that a file is fake or AI-generated.
       </footer>
+
+      {trustList && (
+        <div
+          className={`trustlist${trustList.is_stale ? " trustlist--stale" : ""}`}
+        >
+          <span className="trustlist__dot" aria-hidden="true" />
+          <span className="trustlist__text">
+            Trust list: {trustList.cert_count} certificate
+            {trustList.cert_count === 1 ? "" : "s"}, bundled{" "}
+            {trustList.bundled_date}.
+            {trustList.is_stale
+              ? " This list may be out of date — a valid signature from a newer authority could show as untrusted until you update it."
+              : ""}
+          </span>
+        </div>
+      )}
     </main>
   );
 }
