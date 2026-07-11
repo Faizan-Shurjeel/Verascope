@@ -1,0 +1,5 @@
+{
+  "source_url": "https://github.com/c2pa-org/conformance-public/blob/main/trust-list/C2PA-TRUST-LIST.pem",
+  "bundled_date": "2026-07-11",
+  "notes": "Official C2PA trust list (X.509 root/subordinate CAs recognized by the C2PA conformance program). Does NOT include the frozen Interim Trust List (ITL) or the separate TSA trust list. See docs/PROJECT.md §10."
+}

@@ -15,11 +15,21 @@
 // Rust struct getters. c2pa-rs's typed API has shifted across minor
 // versions; the JSON manifest shape is spec-documented and much more
 // stable, so this is the safer thing to depend on here.
+//
+// Trust list (PROJECT.md §10): the app is offline-first, so the C2PA
+// trust list is embedded directly into the compiled binary at build time
+// (see TRUST_LIST_PEM below) rather than fetched at runtime or shipped as
+// a loose Tauri "resource" file. Updating the trust list means replacing
+// trust-list/C2PA-TRUST-LIST.pem and trust-list/meta.json and rebuilding
+// — an explicit, versioned, auditable act, matching the "never silent"
+// requirement in §10. No network call happens as part of this.
 
-use c2pa::{Context, Reader, ValidationState};
+use c2pa::{Context, Reader, Settings, ValidationState};
 use serde::Serialize;
 use serde_json::Value;
 use std::path::Path;
+use std::sync::{Arc, OnceLock};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Serialize, Debug, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -48,6 +58,17 @@ pub struct AnalysisResult {
     pub notes: Vec<String>,
 }
 
+/// Metadata about the bundled C2PA trust list, surfaced to the UI so it
+/// can show the list's age and flag staleness rather than presenting
+/// trust validation as silently absolute and current (PROJECT.md §10).
+#[derive(Serialize, Debug)]
+pub struct TrustListInfo {
+    pub bundled_date: String,
+    pub source_url: String,
+    pub cert_count: usize,
+    pub is_stale: bool,
+}
+
 fn mime_for_path(path: &Path) -> Option<&'static str> {
     match path
         .extension()
@@ -66,6 +87,100 @@ fn mime_for_path(path: &Path) -> Option<&'static str> {
     }
 }
 
+// ---------------------------------------------------------------------
+// Trust list (PROJECT.md §10)
+// ---------------------------------------------------------------------
+
+/// Official C2PA trust list (X.509 root/subordinate CAs recognized by the
+/// C2PA conformance program), embedded at compile time so validation
+/// works fully offline. Source + bundled date live in trust-list/meta.json.
+/// https://github.com/c2pa-org/conformance-public/blob/main/trust-list/C2PA-TRUST-LIST.pem
+const TRUST_LIST_PEM: &str = include_str!("../trust-list/C2PA-TRUST-LIST.pem");
+const TRUST_LIST_META: &str = include_str!("../trust-list/meta.json");
+
+/// How old the bundled trust list can get before the UI must flag it as
+/// stale (PROJECT.md §10). Placeholder value — revisit per Open Question #4.
+const TRUST_LIST_STALENESS_DAYS: i64 = 180;
+
+/// Context shared across every `analyze_media` call, built once with the
+/// bundled trust list wired in. `Context` is `Send + Sync`; sharing it via
+/// `Arc` (rather than rebuilding it per call) is the pattern the c2pa-rs
+/// docs recommend for exactly this situation.
+static SHARED_CONTEXT: OnceLock<Arc<Context>> = OnceLock::new();
+
+fn shared_context() -> &'static Arc<Context> {
+    SHARED_CONTEXT.get_or_init(|| {
+        let settings = Settings::new()
+            .with_value("trust.trust_anchors", TRUST_LIST_PEM.to_string())
+            .expect("bundled trust list PEM is malformed");
+        Context::new()
+            .with_settings(settings)
+            .expect("failed to build C2PA context with bundled trust list")
+            .into_shared()
+    })
+}
+
+/// Days since the Unix epoch (1970-01-01) for a proleptic-Gregorian civil
+/// date. Standard algorithm (Howard Hinnant); used instead of pulling in
+/// a date/time crate for one staleness calculation.
+fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
+    let y = if m <= 2 { y - 1 } else { y };
+    let era = (if y >= 0 { y } else { y - 399 }) / 400;
+    let yoe = y - era * 400;
+    let mp = (m + 9) % 12;
+    let doy = (153 * mp + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146097 + doe - 719468
+}
+
+/// Parses a "YYYY-MM-DD" string into days-since-epoch. The bundled
+/// meta.json is a build-time asset, not user data — a parse failure here
+/// means the packaging is broken, so this panics rather than propagating
+/// a runtime error.
+fn parse_date_to_epoch_days(date: &str) -> i64 {
+    let parts: Vec<i64> = date
+        .split('-')
+        .map(|p| p.parse().expect("bundled trust list date is malformed"))
+        .collect();
+    days_from_civil(parts[0], parts[1], parts[2])
+}
+
+/// Returns the bundled trust list's date, source, and whether it has
+/// crossed the staleness threshold, so the UI can show this rather than
+/// presenting validation as silently absolute and current (PROJECT.md
+/// §10 — never automatic/silent about trust list age).
+#[tauri::command]
+fn get_trust_list_info() -> Result<TrustListInfo, String> {
+    let meta: Value = serde_json::from_str(TRUST_LIST_META)
+        .map_err(|e| format!("Bundled trust list metadata is malformed: {e}"))?;
+
+    let bundled_date = meta
+        .get("bundled_date")
+        .and_then(Value::as_str)
+        .unwrap_or("unknown")
+        .to_string();
+    let source_url = meta
+        .get("source_url")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    let cert_count = TRUST_LIST_PEM.matches("BEGIN CERTIFICATE").count();
+
+    let bundled_days = parse_date_to_epoch_days(&bundled_date);
+    let now_days = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64 / 86_400)
+        .unwrap_or(bundled_days);
+    let is_stale = (now_days - bundled_days) > TRUST_LIST_STALENESS_DAYS;
+
+    Ok(TrustListInfo {
+        bundled_date,
+        source_url,
+        cert_count,
+        is_stale,
+    })
+}
+
 /// Reads and validates any C2PA manifest embedded in the file at `path`,
 /// returning a three-state verdict. Never returns an error for "no
 /// manifest" — that's a normal, expected outcome (state 3), not a failure.
@@ -82,7 +197,7 @@ fn analyze_media(path: String) -> Result<AnalysisResult, String> {
 
     let file = std::fs::File::open(p).map_err(|e| format!("Could not open file: {e}"))?;
 
-    match Reader::from_context(Context::new()).with_stream(mime, file) {
+    match Reader::from_shared_context(shared_context()).with_stream(mime, file) {
         Ok(reader) => Ok(build_result_from_reader(&reader)),
 
         // No embedded (or sidecar) manifest at all. This is state 3 and is
@@ -191,7 +306,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![analyze_media])
+        .invoke_handler(tauri::generate_handler![analyze_media, get_trust_list_info])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
