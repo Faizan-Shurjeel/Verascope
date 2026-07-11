@@ -25,3 +25,4 @@ serde_json = "1"
 c2pa = { version = "0.89", default-features = false, features = ["file_io", "rust_native_crypto"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
+image = "0.25"

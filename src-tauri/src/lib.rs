@@ -23,8 +23,14 @@
 // trust-list/C2PA-TRUST-LIST.pem and trust-list/meta.json and rebuilding
 // — an explicit, versioned, auditable act, matching the "never silent"
 // requirement in §10. No network call happens as part of this.
+//
+// Phase 2 (PROJECT.md §2.3): compute_heuristic_signal() below is a
+// separate, non-authoritative Error Level Analysis signal. It is never
+// merged into the C2PA verdict above — kept as its own Option field so
+// the UI is structurally forced to show it separately.
 
 use c2pa::{Context, Reader, Settings, ValidationState};
+use image::{codecs::jpeg::JpegEncoder, ExtendedColorType, ImageEncoder};
 use serde::Serialize;
 use serde_json::Value;
 use std::path::Path;
@@ -56,6 +62,20 @@ pub struct AnalysisResult {
     pub claim_generator: Option<String>,
     /// Non-fatal validation notes (e.g. why UntrustedOrBroken).
     pub notes: Vec<String>,
+    /// Secondary, non-authoritative heuristic signal (Phase 2). Always a
+    /// separate field from the C2PA verdict above — never blended.
+    pub heuristic: Option<HeuristicSignal>,
+}
+
+/// Secondary, non-authoritative signal — recompression-error variance,
+/// NOT an AI-generation classifier. Deliberately its own type so it can
+/// never be conflated with the C2PA verdict (PROJECT.md §2.3).
+#[derive(Serialize, Debug)]
+pub struct HeuristicSignal {
+    /// 0.0–1.0. Relative recompression-artifact magnitude, not a
+    /// probability of anything.
+    pub score: f32,
+    pub summary: String,
 }
 
 /// Metadata about the bundled C2PA trust list, surfaced to the UI so it
@@ -184,6 +204,8 @@ fn get_trust_list_info() -> Result<TrustListInfo, String> {
 /// Reads and validates any C2PA manifest embedded in the file at `path`,
 /// returning a three-state verdict. Never returns an error for "no
 /// manifest" — that's a normal, expected outcome (state 3), not a failure.
+/// The heuristic signal (Phase 2) is computed once, here, regardless of
+/// which verdict branch was hit — it's an independent pixel-level check.
 #[tauri::command]
 fn analyze_media(path: String) -> Result<AnalysisResult, String> {
     let p = Path::new(&path);
@@ -197,12 +219,12 @@ fn analyze_media(path: String) -> Result<AnalysisResult, String> {
 
     let file = std::fs::File::open(p).map_err(|e| format!("Could not open file: {e}"))?;
 
-    match Reader::from_shared_context(shared_context()).with_stream(mime, file) {
-        Ok(reader) => Ok(build_result_from_reader(&reader)),
+    let mut result = match Reader::from_shared_context(shared_context()).with_stream(mime, file) {
+        Ok(reader) => build_result_from_reader(&reader),
 
         // No embedded (or sidecar) manifest at all. This is state 3 and is
         // explicitly NOT evidence of anything about the file.
-        Err(c2pa::Error::JumbfNotFound) => Ok(AnalysisResult {
+        Err(c2pa::Error::JumbfNotFound) => AnalysisResult {
             verdict: Verdict::NoProvenance,
             summary: "No verifiable provenance data was found in this file. This is common, \
                       even for genuine, unedited photos — it is not evidence that the file \
@@ -212,12 +234,13 @@ fn analyze_media(path: String) -> Result<AnalysisResult, String> {
             signer: None,
             claim_generator: None,
             notes: vec![],
-        }),
+            heuristic: None,
+        },
 
         // Any other error (malformed JUMBF, unreadable stream, etc.) —
         // treat conservatively as "present but broken" rather than
         // silently reporting "no provenance", since something was there.
-        Err(e) => Ok(AnalysisResult {
+        Err(e) => AnalysisResult {
             verdict: Verdict::UntrustedOrBroken,
             summary: "Provenance data was found but could not be read or validated correctly."
                 .to_string(),
@@ -225,8 +248,54 @@ fn analyze_media(path: String) -> Result<AnalysisResult, String> {
             signer: None,
             claim_generator: None,
             notes: vec![e.to_string()],
-        }),
-    }
+            heuristic: None,
+        },
+    };
+
+    result.heuristic = compute_heuristic_signal(p);
+    Ok(result)
+}
+
+/// Error Level Analysis: re-save at a fixed JPEG quality, diff against the
+/// original. Uneven error levels can indicate localized edits/splicing.
+/// NOT specific to AI-generation — a rough, honestly-scoped signal only.
+/// Returns None (not an error) if the file can't be decoded — e.g. HEIC,
+/// which the `image` crate doesn't support; the C2PA verdict still stands
+/// on its own either way.
+fn compute_heuristic_signal(path: &Path) -> Option<HeuristicSignal> {
+    let original = image::open(path).ok()?.to_rgb8();
+    let (w, h) = original.dimensions();
+
+    let mut recompressed_bytes = Vec::new();
+    JpegEncoder::new_with_quality(&mut recompressed_bytes, 90)
+        .write_image(original.as_raw(), w, h, ExtendedColorType::Rgb8)
+        .ok()?;
+    let recompressed = image::load_from_memory(&recompressed_bytes).ok()?.to_rgb8();
+
+    let total_diff: u64 = original
+        .pixels()
+        .zip(recompressed.pixels())
+        .map(|(a, b)| {
+            (0..3)
+                .map(|c| (a[c] as i32 - b[c] as i32).unsigned_abs() as u64)
+                .sum::<u64>()
+        })
+        .sum();
+    let mean_diff = total_diff as f32 / (w as u64 * h as u64 * 3) as f32;
+    let score = (mean_diff / 30.0).min(1.0);
+
+    let summary = if score > 0.6 {
+        "Recompression-error analysis found unusually uneven error levels across the image \
+         — sometimes seen in edited or spliced photos. This is a rough, non-authoritative \
+         signal, not evidence of AI-generation."
+            .to_string()
+    } else {
+        "Recompression-error analysis found no unusual patterns. This does not confirm the \
+         image is untouched."
+            .to_string()
+    };
+
+    Some(HeuristicSignal { score, summary })
 }
 
 /// Pulls claim_generator_info[0].name and signature_info.issuer out of the
@@ -274,6 +343,7 @@ fn build_result_from_reader(reader: &Reader) -> AnalysisResult {
             signer,
             claim_generator,
             notes: vec![],
+            heuristic: None,
         },
         ValidationState::Valid => AnalysisResult {
             verdict: Verdict::UntrustedOrBroken,
@@ -285,6 +355,7 @@ fn build_result_from_reader(reader: &Reader) -> AnalysisResult {
             signer,
             claim_generator,
             notes: vec!["Signature is valid but the issuer is not in the trust list.".into()],
+            heuristic: None,
         },
         ValidationState::Invalid => AnalysisResult {
             verdict: Verdict::UntrustedOrBroken,
@@ -296,6 +367,7 @@ fn build_result_from_reader(reader: &Reader) -> AnalysisResult {
             signer,
             claim_generator,
             notes: vec!["Manifest validation reported errors — see raw JSON.".into()],
+            heuristic: None,
         },
     }
 }

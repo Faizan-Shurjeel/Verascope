@@ -5,41 +5,14 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { AnalysisResult, TrustListInfo, Verdict } from "./types";
 import "./App.css";
 
-// Kept in sync with mime_for_path() in src-tauri/src/lib.rs.
 const IMAGE_EXTENSIONS = [
-  "jpg",
-  "jpeg",
-  "png",
-  "webp",
-  "gif",
-  "tif",
-  "tiff",
-  "heic",
-  "heif",
-  "avif",
+  "jpg", "jpeg", "png", "webp", "gif", "tif", "tiff", "heic", "heif", "avif",
 ];
 
-// Presentation for each of the three verdict states (docs/PROJECT.md §6).
-// The label/symbol are deliberately calibrated, never a binary real/fake.
-const VERDICT_META: Record<
-  Verdict,
-  { label: string; symbol: string; className: string }
-> = {
-  verified: {
-    label: "Verified Provenance",
-    symbol: "✓",
-    className: "verdict--verified",
-  },
-  untrusted_or_broken: {
-    label: "Provenance Present — Untrusted or Broken",
-    symbol: "!",
-    className: "verdict--untrusted",
-  },
-  no_provenance: {
-    label: "No Provenance Found",
-    symbol: "?",
-    className: "verdict--none",
-  },
+const VERDICT_META: Record<Verdict, { label: string; symbol: string; className: string }> = {
+  verified: { label: "Verified Provenance", symbol: "✓", className: "verdict--verified" },
+  untrusted_or_broken: { label: "Provenance Present — Untrusted or Broken", symbol: "!", className: "verdict--untrusted" },
+  no_provenance: { label: "No Provenance Found", symbol: "?", className: "verdict--none" },
 };
 
 function basename(path: string): string {
@@ -83,8 +56,6 @@ function App() {
     }
   }, [analyze]);
 
-  // Native Tauri drag-drop — unlike HTML5 drag-drop, this hands us real
-  // filesystem paths that the Rust backend can open.
   useEffect(() => {
     const unlisten = getCurrentWebview().onDragDropEvent((event) => {
       const payload = event.payload;
@@ -104,10 +75,6 @@ function App() {
     };
   }, [analyze]);
 
-  // Load bundled trust-list metadata once on mount so we can show its date
-  // and flag staleness (docs/PROJECT.md §10 — trust validation must never
-  // be presented as silently absolute and current). A failure here is
-  // non-fatal: the app still analyzes files, it just won't show the badge.
   useEffect(() => {
     invoke<TrustListInfo>("get_trust_list_info")
       .then(setTrustList)
@@ -121,8 +88,7 @@ function App() {
       <header className="app__header">
         <h1 className="app__wordmark">Verascope</h1>
         <p className="app__tagline">
-          Offline content provenance &amp; authenticity — checked locally, on
-          your device.
+          Offline content provenance & authenticity — checked locally, on your device.
         </p>
       </header>
 
@@ -139,16 +105,12 @@ function App() {
         }}
       >
         <p className="dropzone__primary">
-          {loading
-            ? "Analyzing…"
-            : "Drop an image here, or click to choose a file"}
+          {loading ? "Analyzing…" : "Drop an image here, or click to choose a file"}
         </p>
         <p className="dropzone__hint">
           {IMAGE_EXTENSIONS.map((e) => e.toUpperCase()).join(" · ")}
         </p>
-        {fileName && !loading && (
-          <p className="dropzone__file">{fileName}</p>
-        )}
+        {fileName && !loading && <p className="dropzone__file">{fileName}</p>}
       </section>
 
       {error && (
@@ -210,42 +172,44 @@ function App() {
             </div>
           </section>
 
-          {/* Phase 2 stub. Kept structurally and visually separate from the
-              provenance verdict above — a heuristic guess must never be
-              presented as, or blended into, cryptographic provenance
-              (docs/PROJECT.md §2.3). */}
-          <section className="heuristic" aria-disabled="true">
+          <section className="heuristic">
             <div className="heuristic__header">
               <span className="heuristic__icon">🔍</span>
               <h3 className="heuristic__title">AI-Artifact Signal</h3>
-              <span className="heuristic__tag">
-                heuristic · non-authoritative
-              </span>
+              <span className="heuristic__tag">heuristic · non-authoritative</span>
             </div>
-            <p className="heuristic__body">
-              Pixel-pattern estimation of likely AI-generation is planned for a
-              later release (Phase 2). When available, it will be a best-effort
-              statistical guess shown here, separate from the provenance result
-              above — never a verified fact, and never evidence on its own.
-            </p>
+            {result.heuristic ? (
+              <>
+                <p className="heuristic__body">{result.heuristic.summary}</p>
+                <div className="heuristic__bar" aria-hidden="true">
+                  <div
+                    className="heuristic__bar-fill"
+                    style={{ width: `${Math.round(result.heuristic.score * 100)}%` }}
+                  />
+                </div>
+                <p className="heuristic__caption">
+                  Recompression-error magnitude — not a probability of AI-generation.
+                </p>
+              </>
+            ) : (
+              <p className="heuristic__body">
+                No heuristic signal available for this file — its format
+                couldn't be decoded for pixel analysis. The provenance result above is unaffected.
+              </p>
+            )}
           </section>
         </>
       )}
 
       <footer className="app__footer">
-        Everything runs locally. No file ever leaves your device. Absence of
-        provenance data is not evidence that a file is fake or AI-generated.
+        Everything runs locally. No file ever leaves your device. Absence of provenance data is not evidence that a file is fake or AI-generated.
       </footer>
 
       {trustList && (
-        <div
-          className={`trustlist${trustList.is_stale ? " trustlist--stale" : ""}`}
-        >
+        <div className={`trustlist${trustList.is_stale ? " trustlist--stale" : ""}`}>
           <span className="trustlist__dot" aria-hidden="true" />
           <span className="trustlist__text">
-            Trust list: {trustList.cert_count} certificate
-            {trustList.cert_count === 1 ? "" : "s"}, bundled{" "}
-            {trustList.bundled_date}.
+            Trust list: {trustList.cert_count} certificate{trustList.cert_count === 1 ? "" : "s"}, bundled {trustList.bundled_date}.
             {trustList.is_stale
               ? " This list may be out of date — a valid signature from a newer authority could show as untrusted until you update it."
               : ""}
