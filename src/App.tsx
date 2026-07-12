@@ -5,8 +5,11 @@ import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { AnalysisResult, TrustListInfo, Verdict } from "./types";
 import "./App.css";
 
-const IMAGE_EXTENSIONS = [
+// Kept in sync with mime_for_path() in src-tauri/src/lib.rs.
+const MEDIA_EXTENSIONS = [
   "jpg", "jpeg", "png", "webp", "gif", "tif", "tiff", "heic", "heif", "avif",
+  // Phase 3 (PROJECT.md §14): video/audio.
+  "mp4", "mov", "m4a", "mp3", "wav",
 ];
 
 const VERDICT_META: Record<Verdict, { label: string; symbol: string; className: string }> = {
@@ -49,7 +52,7 @@ function App() {
     const selected = await open({
       multiple: false,
       directory: false,
-      filters: [{ name: "Images", extensions: IMAGE_EXTENSIONS }],
+      filters: [{ name: "Media", extensions: MEDIA_EXTENSIONS }],
     });
     if (typeof selected === "string") {
       await analyze(selected);
@@ -105,10 +108,10 @@ function App() {
         }}
       >
         <p className="dropzone__primary">
-          {loading ? "Analyzing…" : "Drop an image here, or click to choose a file"}
+          {loading ? "Analyzing…" : "Drop an image, video, or audio file here, or click to choose one"}
         </p>
         <p className="dropzone__hint">
-          {IMAGE_EXTENSIONS.map((e) => e.toUpperCase()).join(" · ")}
+          {MEDIA_EXTENSIONS.map((e) => e.toUpperCase()).join(" · ")}
         </p>
         {fileName && !loading && <p className="dropzone__file">{fileName}</p>}
       </section>
@@ -193,8 +196,9 @@ function App() {
               </>
             ) : (
               <p className="heuristic__body">
-                No heuristic signal available for this file — its format
-                couldn't be decoded for pixel analysis. The provenance result above is unaffected.
+                No heuristic signal available for this file — it's either a format the pixel
+                analysis can't decode, or a video/audio file (not yet supported by this signal).
+                The provenance result above is unaffected either way.
               </p>
             )}
           </section>

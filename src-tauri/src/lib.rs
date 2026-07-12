@@ -1,8 +1,8 @@
 // Verascope — Rust backend
 //
-// Phase 1 scope only: read + validate a C2PA manifest for a single local
-// image file and map the result onto the three-state verdict model from
-// the project doc (§6):
+// Read + validate a C2PA manifest for a single local media file (image,
+// video, or audio — Phase 3, PROJECT.md §14) and map the result onto the
+// three-state verdict model from the project doc (§6):
 //
 //   1. Verified          — manifest present, signature valid, chains to a
 //                           trusted issuer.
@@ -103,6 +103,14 @@ fn mime_for_path(path: &Path) -> Option<&'static str> {
         Some("tif") | Some("tiff") => Some("image/tiff"),
         Some("heic") | Some("heif") => Some("image/heic"),
         Some("avif") => Some("image/avif"),
+        // Phase 3 (PROJECT.md §14): video/audio. c2pa-rs reads these through
+        // the same Reader::from_stream(mime, ...) call as images — no new
+        // parsing path needed, just widening the accepted MIME set.
+        Some("mp4") => Some("video/mp4"),
+        Some("mov") => Some("video/quicktime"),
+        Some("m4a") => Some("audio/mp4"),
+        Some("mp3") => Some("audio/mpeg"),
+        Some("wav") => Some("audio/wav"),
         _ => None,
     }
 }
@@ -227,8 +235,8 @@ fn analyze_media(path: String) -> Result<AnalysisResult, String> {
         Err(c2pa::Error::JumbfNotFound) => AnalysisResult {
             verdict: Verdict::NoProvenance,
             summary: "No verifiable provenance data was found in this file. This is common, \
-                      even for genuine, unedited photos — it is not evidence that the file \
-                      is inauthentic or AI-generated."
+                      even for genuine, unedited photos, videos, or audio recordings — it is \
+                      not evidence that the file is inauthentic or AI-generated."
                 .to_string(),
             manifest_json: None,
             signer: None,
@@ -259,9 +267,11 @@ fn analyze_media(path: String) -> Result<AnalysisResult, String> {
 /// Error Level Analysis: re-save at a fixed JPEG quality, diff against the
 /// original. Uneven error levels can indicate localized edits/splicing.
 /// NOT specific to AI-generation — a rough, honestly-scoped signal only.
-/// Returns None (not an error) if the file can't be decoded — e.g. HEIC,
-/// which the `image` crate doesn't support; the C2PA verdict still stands
-/// on its own either way.
+/// Still-frame/pixel analysis only — deliberately not attempted for video
+/// or audio (PROJECT.md §14 leaves that an open research question, not a
+/// quick add). Returns None (not an error) for anything the `image` crate
+/// can't decode — HEIC, or any Phase 3 video/audio file; the C2PA verdict
+/// still stands on its own either way.
 fn compute_heuristic_signal(path: &Path) -> Option<HeuristicSignal> {
     let original = image::open(path).ok()?.to_rgb8();
     let (w, h) = original.dimensions();
@@ -381,4 +391,19 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![analyze_media, get_trust_list_info])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mime_for_path_accepts_phase3_video_and_audio() {
+        assert_eq!(mime_for_path(Path::new("clip.mp4")), Some("video/mp4"));
+        assert_eq!(mime_for_path(Path::new("clip.MOV")), Some("video/quicktime"));
+        assert_eq!(mime_for_path(Path::new("voice.m4a")), Some("audio/mp4"));
+        assert_eq!(mime_for_path(Path::new("song.mp3")), Some("audio/mpeg"));
+        assert_eq!(mime_for_path(Path::new("clip.wav")), Some("audio/wav"));
+        assert_eq!(mime_for_path(Path::new("doc.txt")), None);
+    }
 }
