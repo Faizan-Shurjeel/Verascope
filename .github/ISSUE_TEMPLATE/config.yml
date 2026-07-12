@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Project spec / roadmap
+    url: https://github.com/Faizan-Shurjeel/Verascope/blob/main/docs/PROJECT.md
+    about: Read this before filing a scope-related feature request.

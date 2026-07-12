@@ -1,6 +1,6 @@
 # Verascope
 
-**Offline C2PA provenance verifier.** A cross-platform desktop app that reads and validates [C2PA](https://c2pa.org) provenance manifests in images — fully locally. No file ever leaves your device; no network calls.
+**Offline C2PA provenance verifier.** A cross-platform desktop app that reads and validates [C2PA](https://c2pa.org) provenance manifests in images, video, and audio files — fully locally. No file ever leaves your device; no network calls.
 
 Built with Tauri v2, React 19, and a Rust backend (`c2pa-rs`).
 
@@ -14,7 +14,7 @@ Verascope never gives a binary "real/fake" answer. Every file resolves to one of
 | ⚠️ **Untrusted or Broken** | A manifest exists but failed validation (bad signature, tampered content, or an untrusted signer). |
 | ❔ **No Provenance** | No manifest found. This is **not** evidence of anything — most genuine photos have no manifest. |
 
-A heuristic AI-generation signal is planned (Phase 2) as a clearly separated, non-authoritative panel. Cryptographic provenance and heuristic guessing are two different problems and are never blended.
+A secondary, clearly separated heuristic panel (Error Level Analysis — recompression-artifact detection, images only) shows a non-authoritative signal alongside the verdict. Cryptographic provenance and heuristic guessing are two different problems and are never blended.
 
 ## Develop
 
@@ -31,10 +31,14 @@ bun run tauri build    # native installers
 
 The official C2PA trust list is embedded at build time (`src-tauri/trust-list/`), so validation is fully offline. It goes stale over time — the app shows its bundled date and flags staleness. Updating means replacing the bundled PEM and rebuilding.
 
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md). Please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## Status
 
-Phase 1 (offline C2PA verification for images) is functional. See [`docs/PROJECT.md`](docs/PROJECT.md) for full scope and roadmap.
+Phase 1 (C2PA verification), Phase 2 (heuristic panel), and Phase 3 (video/audio) are functional. See [`docs/PROJECT.md`](docs/PROJECT.md) for full scope and roadmap.
 
 ## License
 
-MIT OR Apache-2.0
+Licensed under either of [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE) at your option.
