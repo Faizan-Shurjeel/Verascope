@@ -23,7 +23,13 @@
       "Bash(echo \"pid $!\")",
       "Bash(file Icons/*.png)",
       "Bash(cargo check *)",
-      "Bash(echo \"cargo exit: $?\")"
+      "Bash(echo \"cargo exit: $?\")",
+      "Bash(git commit *)",
+      "Bash(gh repo *)",
+      "Bash(rustup target *)",
+      "Read(//usr/lib/**)",
+      "Bash(git remote *)",
+      "Bash(git add *)"
     ]
   }
 }
