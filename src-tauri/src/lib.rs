@@ -292,15 +292,23 @@ fn compute_heuristic_signal(path: &Path) -> Option<HeuristicSignal> {
         })
         .sum();
     let mean_diff = total_diff as f32 / (w as u64 * h as u64 * 3) as f32;
+    // ponytail: 30.0 (normalizer) and 0.6 (threshold) are eyeballed, not
+    // calibrated against a labelled dataset — ceiling is "rough triage, not
+    // a real detector". Upgrade path (PROJECT.md §12 checkpoint): fit both
+    // against a known AI-vs-camera test set before claiming any accuracy.
     let score = (mean_diff / 30.0).min(1.0);
 
+    // Copy deliberately describes OVERALL error magnitude — a single global
+    // mean, which is exactly what's computed above. It must NOT claim
+    // spatially "uneven"/regional error: that would need per-block variance
+    // we don't measure, and overclaiming is what PROJECT.md §11 forbids.
     let summary = if score > 0.6 {
-        "Recompression-error analysis found unusually uneven error levels across the image \
-         — sometimes seen in edited or spliced photos. This is a rough, non-authoritative \
+        "Recompression-error analysis found a relatively high overall error level for this \
+         image — sometimes seen in edited or re-saved photos. This is a rough, non-authoritative \
          signal, not evidence of AI-generation."
             .to_string()
     } else {
-        "Recompression-error analysis found no unusual patterns. This does not confirm the \
+        "Recompression-error analysis found a low overall error level. This does not confirm the \
          image is untouched."
             .to_string()
     };
@@ -386,7 +394,6 @@ fn build_result_from_reader(reader: &Reader) -> AnalysisResult {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![analyze_media, get_trust_list_info])
         .run(tauri::generate_context!())

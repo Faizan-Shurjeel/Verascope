@@ -14,11 +14,11 @@ Verascope never gives a binary "real/fake" answer. Every file resolves to one of
 | ⚠️ **Untrusted or Broken** | A manifest exists but failed validation (bad signature, tampered content, or an untrusted signer). |
 | ❔ **No Provenance** | No manifest found. This is **not** evidence of anything — most genuine photos have no manifest. |
 
-A secondary, clearly separated heuristic panel (Error Level Analysis — recompression-artifact detection, images only) shows a non-authoritative signal alongside the verdict. Cryptographic provenance and heuristic guessing are two different problems and are never blended.
+A secondary, clearly separated heuristic panel (Error Level Analysis — recompression-artifact detection, images only) shows a non-authoritative signal alongside the verdict. Cryptographic provenance and heuristic guessing are two different problems and are never blended. Note: the heuristic decodes common formats only — HEIC/HEIF (typical iPhone photos) can't be decoded for pixel analysis, so no heuristic signal is shown for them; the C2PA verdict is unaffected.
 
 ## Develop
 
-Requires Rust, [Bun](https://bun.sh), and the [Tauri v2 system deps](https://tauri.app/start/prerequisites/).
+Requires **Rust 1.88+** (the `c2pa` crate needs it — a distro `apt install rustc` is usually too old; use [rustup](https://rustup.rs), which reads the bundled `rust-toolchain.toml`), [Bun](https://bun.sh), and the [Tauri v2 system deps](https://tauri.app/start/prerequisites/).
 
 ```bash
 bun install

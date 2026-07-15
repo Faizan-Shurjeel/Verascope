@@ -50,7 +50,8 @@ The project is **mid-wiring**: `lib.rs` already implements `analyze_media` and h
 ## Offline / dependency constraints
 
 - `c2pa` is pinned with `default-features = false, features = ["file_io", "rust_native_crypto"]` in `src-tauri/Cargo.toml`. This is intentional: `rust_native_crypto` avoids a system OpenSSL dependency, and disabling defaults drops the HTTP resolver backends. **This app makes no network calls by design** — do not add features or crates that fetch remotely for core verification.
-- Tauri plugins in use: `opener`, `dialog`, `fs`. Permissions are granted in `src-tauri/capabilities/default.json` — adding a new plugin capability requires updating that file.
+- Tauri plugins in use: `opener`, `dialog`. Permissions are granted in `src-tauri/capabilities/default.json` — adding a new plugin capability requires updating that file. (`fs` was intentionally removed: `analyze_media` opens files via `std::fs` inside the Rust command, so no filesystem plugin/permission is needed.)
+- `security.csp` in `tauri.conf.json` is deliberately `null`. Normally a Tauri anti-pattern, but acceptable here: the app is fully offline, loads no remote content, and renders no untrusted HTML — there is no injection surface a CSP would protect. Revisit if any remote resource or user-supplied markup is ever introduced.
 - `c2pa` is a 0.x crate that ships breaking changes across minor versions; when touching backend C2PA code, verify against the resolved version (currently 0.89) rather than memory.
 
 ## Roadmap context

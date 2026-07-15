@@ -1,0 +1,6 @@
+[toolchain]
+# c2pa 0.89 (and transitive deps using edition2024) require Rust 1.88+.
+# Pinning to a recent stable so rustup auto-selects a compatible toolchain
+# — a fresh `apt install rustc` gives 1.75 and fails with a confusing
+# "feature 'edition2024' is required" error on a transitive dependency.
+channel = "stable"
