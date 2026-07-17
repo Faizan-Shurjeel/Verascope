@@ -237,6 +237,7 @@ This section is meant to be actively maintained — add to it as decisions get m
 - Add secondary, clearly-separated heuristic panel to the UI
 - Publish detector methodology and known limitations openly (transparency as a trust mechanism)
 - Begin structured internal testing of false-positive/false-negative rates
+- Build a calibration/evaluation harness for the heuristic: run the scorer over a small labelled corpus (AI-generated, camera-original, edited/re-saved images), sweep the verdict threshold, and produce confusion matrix + ROC/AUC + score-distribution plots — so the current eyeballed constants (normalizer 30.0, threshold 0.6 in `compute_heuristic_signal`) become defensible, published numbers instead of magic values. (Methodology borrowed from the maintainer's earlier MalwareRizz project's `malware_evaluate.m` — same labelled-corpus → score → threshold-sweep pattern, different domain.)
 - Refine calibrated-language guidelines based on real test feedback
 - **Checkpoint:** Is the heuristic signal accurate/honest enough to ship, or does it need more work/should it stay clearly experimental for longer?
 
