@@ -96,8 +96,12 @@ Contributions are very welcome — this project is actively looking for contribu
 
 ## Star history
 
-<a href="https://star-history.com/#Faizan-Shurjeel/Verascope&Date">
-  <img src="https://api.star-history.com/svg?repos=Faizan-Shurjeel/Verascope&type=Date" alt="Star history chart" width="600" />
+<a href="https://www.star-history.com/?repos=Faizan-Shurjeel%2FVerascope&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=Faizan-Shurjeel/Verascope&type=date&theme=dark&legend=top-left&sealed_token=kGzznC4DAnH_Whmt0TdkiEHULKNg2JQThBUaB71gCVSfrYXFXofpfQoOUBmXVxmA3icIz4uLRPIEsbylGw2nerPNxq0dhxQSMbi8XK_wBuc7lDFbB9sL8KCsLfeu3HA_widyUZsQZ1PWU1IUYKzfjyUE8oe5L4OFcuMm16NBDSwB8oZ6zpRTWaCOjh9V" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=Faizan-Shurjeel/Verascope&type=date&legend=top-left&sealed_token=kGzznC4DAnH_Whmt0TdkiEHULKNg2JQThBUaB71gCVSfrYXFXofpfQoOUBmXVxmA3icIz4uLRPIEsbylGw2nerPNxq0dhxQSMbi8XK_wBuc7lDFbB9sL8KCsLfeu3HA_widyUZsQZ1PWU1IUYKzfjyUE8oe5L4OFcuMm16NBDSwB8oZ6zpRTWaCOjh9V" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=Faizan-Shurjeel/Verascope&type=date&legend=top-left&sealed_token=kGzznC4DAnH_Whmt0TdkiEHULKNg2JQThBUaB71gCVSfrYXFXofpfQoOUBmXVxmA3icIz4uLRPIEsbylGw2nerPNxq0dhxQSMbi8XK_wBuc7lDFbB9sL8KCsLfeu3HA_widyUZsQZ1PWU1IUYKzfjyUE8oe5L4OFcuMm16NBDSwB8oZ6zpRTWaCOjh9V" />
+ </picture>
 </a>
 
 ## License
