@@ -4,6 +4,10 @@ version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
+# c2pa 0.89's transitive deps use edition2024 — enforce a clear MSRV error
+# ("package requires rustc 1.88") instead of a confusing edition2024 failure
+# for users on old distro toolchains without rustup.
+rust-version = "1.88"
 license = "MIT OR Apache-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

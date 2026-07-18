@@ -41,11 +41,11 @@ Note: the maintainer sometimes runs cargo via an `rtk` wrapper. If a `cargo` res
   - `Err(c2pa::Error::JumbfNotFound)` → `NoProvenance` (a normal outcome, **never** an error).
   - `ValidationState::Trusted` → `Verified`; `Valid`/`Invalid` → `UntrustedOrBroken`.
   - Signer/claim-generator are extracted from the manifest's **JSON output** (`reader.json()`), *not* typed struct getters — deliberate, because c2pa-rs's typed API breaks across minor versions while the JSON shape is spec-stable. Keep new field extraction JSON-based for the same reason.
-- **Frontend — `src/App.tsx`**: the UI. Should render the three-state verdict card plus a visually-separate, disabled Phase 2 heuristic stub.
+- **Frontend — `src/App.tsx`**: the UI. Renders the three-state verdict card plus the visually-separate, non-authoritative ELA heuristic panel (drag-drop / file-picker via the `dialog` plugin).
 
 ### Current state (important)
 
-The project is **mid-wiring**: `lib.rs` already implements `analyze_media` and has removed the scaffold's `greet` command, but `src/App.tsx` is still the default Tauri+React template that calls the now-nonexistent `greet`. The immediate work is replacing `App.tsx` to call `analyze_media` (via file-picker/drag-drop using the `dialog`/`fs` plugins) and render the verdict. Expect `greet`-related calls to fail until this is done.
+Phases 1–3 are **functional and shipped**: `App.tsx` calls `analyze_media`, renders the three-state verdict, and shows the separated heuristic panel; images, video, and audio are supported; v0.1.0 is released with native installers for all three OSes built by `.github/workflows/release.yml` (tag-triggered, `v*.*.*`). Current work is **polish**: test coverage (only one Rust unit test exists), heuristic calibration against a labelled corpus (see PROJECT.md §14 Phase 2), and public launch/community.
 
 ## Offline / dependency constraints
 
@@ -56,4 +56,4 @@ The project is **mid-wiring**: `lib.rs` already implements `analyze_media` and h
 
 ## Roadmap context
 
-Phase 1 (current) = images-only C2PA verification, no heuristic layer. Phase 2 adds the local AI-artifact heuristic (via `ort`/`tract` ONNX inference) as a separate panel. Phase 3 = video/audio. Trust-list management (bundled, versioned, staleness-indicated) is a Phase 1+ concern. See `docs/PROJECT.md` §14 for the full phased plan and checkpoints.
+Phases 1–3 (images C2PA verification → separate heuristic panel → video/audio) are all implemented. The heuristic is currently ELA-based with uncalibrated constants; upgrading to `ort`/`tract` ONNX inference remains the roadmap option. Trust-list management (bundled, versioned, staleness-indicated) is live. See `docs/PROJECT.md` §14 for the full phased plan and checkpoints.
