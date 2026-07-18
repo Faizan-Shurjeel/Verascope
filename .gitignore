@@ -25,3 +25,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Session handoff + personal notes (never commit — repo is public)
+handoff.json
+PREP.MD
+prep.html
