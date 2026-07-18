@@ -19,7 +19,7 @@
 
 <img src="ss/main.png" alt="Verascope main window — drop an image, video, or audio file" width="720" />
 
-*Drop a file. Get a cryptographic answer — not a guess. No file ever leaves your device.*
+*Drop a file. Check for verifiable cryptographic provenance locally. No file ever leaves your device.*
 
 </div>
 
