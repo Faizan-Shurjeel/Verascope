@@ -2,7 +2,9 @@
 **Working title:** *Verascope* (placeholder — rename freely)
 **Version:** 0.1 (Draft)
 **Last updated:** July 9, 2026
-**Status:** Concept / Pre-development
+**Status:** v0.1.0 released. This document preserves the original product
+direction and technical rationale; see [ROADMAP.md](ROADMAP.md) for current
+work and contributor opportunities.
 **License model:** Open-source (community-driven)
 
 ---

@@ -88,11 +88,11 @@ bun run tauri build    # native installers
 
 ## Status & roadmap
 
-Phase 1 (C2PA verification, images), Phase 2 (heuristic panel), and Phase 3 (video/audio) are functional. Next up: calibrating the heuristic against a labelled corpus, test coverage, and community building. See [`docs/PROJECT.md`](docs/PROJECT.md) for the full scope, design principles, and phased roadmap.
+v0.1.0 supports C2PA verification for images, video, and audio, plus a separate experimental image heuristic. Current priorities are calibration against a labelled corpus, test coverage, and community maintenance. See the [public roadmap](docs/ROADMAP.md) and the [product specification](docs/PROJECT.md) for scope and design principles.
 
 ## Contributing
 
-Contributions are very welcome — this project is actively looking for contributors and co-maintainers. See [`CONTRIBUTING.md`](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). Good entry points: test coverage, heuristic calibration, trust-list tooling, and UI polish.
+Contributions and prospective co-maintainers are welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md), the [roadmap](docs/ROADMAP.md), and [governance](GOVERNANCE.md). Good entry points: test coverage, heuristic calibration, CI/release maintenance, accessibility, and UI polish.
 
 ## Star history
 
